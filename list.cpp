@@ -1,11 +1,10 @@
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
+#define LIST_DEBUG
 #define DUMP_ALWAYS
-
-#ifdef DUMP_ALWAYS
-#define DONT_DO_DUMP DO_DUMP
-#endif
+#define CONSOLE_OUTPUT_MODE
 
 #define LIST_INSERT_BEFORE_INDEX(list, index, val) ListInsertBeforeIndex((list), (index), (val), (__FILE__), (__FUNCTION__), (__LINE__))
 #define LIST_INSERT_AFTER_INDEX(list, index, val) ListInsertAfterIndex((list), (index), (val), (__FILE__), (__FUNCTION__), (__LINE__))
@@ -17,15 +16,26 @@
 #define LIST_KILL_ELEM_BY_LOGICAL_INDEX(list, index) ListKillElemByLogicalIndex((list), (index), (__FILE__), (__FUNCTION__), (__LINE__))
 #define LIST_DUMP(list) ListDump((list), (__FILE__), (__FUNCTION__), (__LINE__))
 
+#ifdef CONSOLE_OUTPUT_MODE
+#define CONSOLE_OUTPUT(...) __VA_ARGS__
+#else
+#define CONSOLE_OUTPUT(...)
+#endif
+
+#ifdef LIST_DEBUG
 #define LIST_VERIFY(do_dump)    do{\
-                                    if(ListVerify(list, do_dump, callFile, callFunc, callLine) == LIST_RETURN_ERROR){\
-                                        fprintf(stderr, "Verification wasn't passed. Check Dump!\n");\
-                                        return;\
+                                    if(ListVerify(list, do_dump, callFile, callFunc, callLine) != LIST_ERROR_NO_ERROR){\
+                                        CONSOLE_OUTPUT(fprintf(stderr, "Verification wasn't passed. Check Dump!\n");)\
+                                        return LIST_ERROR_VERIFICATION_FAILED;\
                                     }\
                                 }while(0)
+#else
+#define LIST_VERIFY(do_dump)
+#endif
 
 typedef int listElem_t;
 
+const char *const ERROR_COL = "#ff0000";
 const char *const EDGE_RED_COL = "#ff0000";
 const char *const EDGE_GREEN_COL = "#00ff00";
 const char *const DUMMY_COL = "#ffd000";
@@ -35,7 +45,7 @@ const char *const FIRST_FREE_COL = "#ff92c3";
 const char *const FILLED_COL = "#2958ff";
 const char *const FREE_COL = "#00ff4c";
 const char *const BG_COL = "#c0f3ff";
-const char *const SEP_LINE = "________________________________________________________________________________________________________________________________________________________________________________________________________________________\n\n\n";
+const char *const SEP_LINE = "____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________\n\n\n";
 
 const size_t global_minListSize = 10;
 const size_t global_Fiasco = 0xF1A5C0;
@@ -45,19 +55,27 @@ enum list_returns_t{
     LIST_RETURN_ERROR = 1
 };
 
+enum list_errors_t{
+    LIST_ERROR_NO_ERROR,
+    LIST_ERROR_ALLOCA,
+    LIST_ERROR_INDEX_OUT_OF_RANGE,
+    LIST_ERROR_INVALID_INDEX,
+    LIST_ERROR_VERIFICATION_FAILED,
+    LIST_ERROR_LIST_IS_FULL,
+
+};
+
 enum placement_t{
     BEFORE = 0,
     AFTER = 1
 };
-#ifdef DUMP_ALWAYS
-#undef DONT_DO_DUMP
-#endif 
+
 enum dodump_t{
     DONT_DO_DUMP = 0,
     DO_DUMP = 1    
 };
 #ifdef DUMP_ALWAYS
-#define DONT_DO_DUMP DO_DUMP
+    #define DONT_DO_DUMP DO_DUMP
 #endif
 
 struct list_t{
@@ -69,24 +87,24 @@ struct list_t{
     size_t capacity;
 };
 
-void ListConstructor(list_t *list, size_t capacity);
+list_errors_t ListConstructor(list_t *list, size_t capacity);
 void ListDestructor(list_t *list);
 
 size_t GetNext(const list_t *list, size_t index);
 size_t GetPrev(const list_t *list, size_t index);
 size_t GetElemByLogicalIndex(const list_t *list, size_t index);
 
-void ListInsertBeforeIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
-void ListInsertAfterIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListInsertBeforeIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListInsertAfterIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
 bool CheckMemoryIndex(const list_t *list, size_t index);
-void ListPushTail(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
-void ListPushHead(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
-void ListInsertBeforeElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
-void ListInsertAfterElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
-void ListKillElemByMemoryIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine);
-void ListKillElemByLogicalIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListPushTail(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListPushHead(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListInsertBeforeElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListInsertAfterElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListKillElemByMemoryIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListKillElemByLogicalIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine);
 
-list_returns_t ListVerify(const list_t *list, dodump_t mode, const char *callFile, const char *callFunc, ssize_t callLine);
+list_errors_t ListVerify(const list_t *list, dodump_t mode, const char *callFile, const char *callFunc, ssize_t callLine);
 
 void ListPrint(const list_t *list);
 void ListFullPrint(const list_t *list);
@@ -100,6 +118,7 @@ void ListHtmlCreateTable(const list_t *list, FILE *fileDump);
 const char *GetColor(const list_t *list, size_t i);
 const char *GetStatus(const list_t *list, size_t i);
 const char *GetEdgeColor(const list_t *list, size_t index);
+bool IsIndexValid(const list_t *list, size_t index);
 
 
 //TODO - dir = both DONE
@@ -134,21 +153,14 @@ int main(){
     LIST_INSERT_AFTER_INDEX(&list, 9, 9);
     LIST_INSERT_AFTER_INDEX(&list, 10, 10);
     LIST_INSERT_AFTER_INDEX(&list, 11, 11);
-    LIST_INSERT_AFTER_INDEX(&list, 12, 12);
-    LIST_INSERT_AFTER_INDEX(&list, 13, 13);
-    LIST_INSERT_AFTER_INDEX(&list, 14, 14);
 
-    list.next[3] = -1;
-    list.next[4] = 14;
+    LIST_KILL_ELEM_BY_MEMORY_INDEX(&list, 4);
+    LIST_KILL_ELEM_BY_MEMORY_INDEX(&list, 7);
 
-    LIST_KILL_ELEM_BY_MEMORY_INDEX(&list, 3);
-    LIST_KILL_ELEM_BY_MEMORY_INDEX(&list, 6);
-    LIST_KILL_ELEM_BY_MEMORY_INDEX(&list, 9);
+    list.prev[8] = 70;
 
-    LIST_INSERT_AFTER_INDEX(&list, 5, 15);
-    LIST_INSERT_BEFORE_INDEX(&list, 12, 16);
 
-    LIST_PUSH_HEAD(&list, 17);
+    LIST_DUMP(&list);
 
     ListDestructor(&list);
 
@@ -156,26 +168,26 @@ int main(){
 }
 
 // why no error?
-void ListConstructor(list_t *list, size_t capacity){
+list_errors_t ListConstructor(list_t *list, size_t capacity){
     assert(list != NULL);
 
     list->value = (listElem_t *)calloc(capacity + 1, sizeof(listElem_t));
     if(list->value == NULL){
-        fprintf(stderr, "Allocating value array error\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "Allocating value array error\n");)
+        return LIST_ERROR_ALLOCA;
     }
     list->next = (size_t *)calloc(capacity + 1, sizeof(size_t));
     if(list->next == NULL){
-        fprintf(stderr, "Allocating next array error\n");
+        CONSOLE_OUTPUT(fprintf(stderr, "Allocating next array error\n");)
         free(list->value);
-        return;
+        return LIST_ERROR_ALLOCA;
     }
     list->prev = (size_t *)calloc(capacity + 1, sizeof(size_t));
     if(list->prev == NULL){
-        fprintf(stderr, "Allocating prev array error\n");
+        CONSOLE_OUTPUT(fprintf(stderr, "Allocating prev array error\n");)
         free(list->value);
         free(list->next);
-        return;
+        return LIST_ERROR_ALLOCA;
     }
     list->value[0] = 0;
     list->next[0] = 0;
@@ -195,9 +207,11 @@ void ListConstructor(list_t *list, size_t capacity){
     list->free = 1;
     list->size = 0;
     list->capacity = capacity;
+
+    return LIST_ERROR_NO_ERROR;;
 }
 
-void ListInsertBeforeIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListInsertBeforeIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
@@ -205,12 +219,12 @@ void ListInsertBeforeIndex(list_t *list, size_t index, listElem_t val, const cha
     LIST_VERIFY(DONT_DO_DUMP);
 
     if(!CheckMemoryIndex(list, index)){
-        fprintf(stderr, "Invalid index for insertion!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "Invalid index for insertion!\n");)
+        return LIST_ERROR_INVALID_INDEX;
     }
     if(list->size >= list->capacity + 1){
-        fprintf(stderr, "The list is full!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "The list is full!\n");)
+        return LIST_ERROR_LIST_IS_FULL;
     }
 
     size_t freeElem = list->free;
@@ -226,9 +240,11 @@ void ListInsertBeforeIndex(list_t *list, size_t index, listElem_t val, const cha
     list->size++;
 
     LIST_VERIFY(DO_DUMP);
+
+    return LIST_ERROR_NO_ERROR;
 }
 
-void ListInsertAfterIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListInsertAfterIndex(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
@@ -236,12 +252,12 @@ void ListInsertAfterIndex(list_t *list, size_t index, listElem_t val, const char
     LIST_VERIFY(DONT_DO_DUMP);
 
     if(!CheckMemoryIndex(list, index)){
-        fprintf(stderr, "Invalid index for insertion!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "Invalid index for insertion!\n");)
+        return LIST_ERROR_INVALID_INDEX;
     }
     if(list->size >= list->capacity + 1){
-        fprintf(stderr, "The list is full!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "The list is full!\n");)
+        return LIST_ERROR_LIST_IS_FULL;
     }
 
     size_t freeElem = list->free;
@@ -257,12 +273,14 @@ void ListInsertAfterIndex(list_t *list, size_t index, listElem_t val, const char
     list->size++;
 
     LIST_VERIFY(DO_DUMP);
+
+    return LIST_ERROR_NO_ERROR;
 }
 
 bool CheckMemoryIndex(const list_t *list, size_t index){
     assert(list != NULL);
 
-    if((index < 0) || (index > list->capacity)){
+    if(((ssize_t)index < 0) || ((ssize_t)index > list->capacity)){
         return false;
     }
     else if(list->prev[index] == -1){
@@ -283,7 +301,7 @@ size_t GetPrev(const list_t *list, size_t index){
 
 size_t GetElemByLogicalIndex(const list_t *list, size_t index){
     assert(list != NULL);
-    if((index < 0) || (index > list->capacity)){
+    if(((ssize_t)index < 0) || ((ssize_t)index > list->capacity)){
         return -1;
     }
 
@@ -299,32 +317,35 @@ size_t GetElemByLogicalIndex(const list_t *list, size_t index){
     return elem;
 }
 
-void ListPushHead(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListPushHead(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
 
-    ListInsertAfterElem(list, 0, val, callFile, callFunc, callLine);
+    list_errors_t err = ListInsertAfterElem(list, 0, val, callFile, callFunc, callLine);
+    return err;
 }
 
-void ListPushTail(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListPushTail(list_t *list, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
 
-    ListInsertBeforeElem(list, 0, val, callFile, callFunc, callLine);
+    list_errors_t err = ListInsertBeforeElem(list, 0, val, callFile, callFunc, callLine);
+    return err;
 }
 
-void ListInsertBeforeElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListInsertBeforeElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
 
     LIST_VERIFY(DONT_DO_DUMP);
+
     
     if(list->size >= list->capacity + 1){
-        fprintf(stderr, "The list is full!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "The list is full!\n");)
+        return LIST_ERROR_LIST_IS_FULL;
     }
 
     size_t elem = GetElemByLogicalIndex(list, index);
@@ -341,9 +362,11 @@ void ListInsertBeforeElem(list_t *list, size_t index, listElem_t val, const char
     list->size++;
 
     LIST_VERIFY(DO_DUMP);
+
+    return LIST_ERROR_NO_ERROR;
 }
 
-void ListInsertAfterElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListInsertAfterElem(list_t *list, size_t index, listElem_t val, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
@@ -351,8 +374,8 @@ void ListInsertAfterElem(list_t *list, size_t index, listElem_t val, const char 
     LIST_VERIFY(DONT_DO_DUMP);
 
     if(list->size >= list->capacity + 1){
-        fprintf(stderr, "The list is full!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "The list is full!\n");)
+        return LIST_ERROR_LIST_IS_FULL;
     }
 
     size_t elem = GetElemByLogicalIndex(list, index);
@@ -369,9 +392,11 @@ void ListInsertAfterElem(list_t *list, size_t index, listElem_t val, const char 
     list->size++;
 
     LIST_VERIFY(DO_DUMP);
+
+    return LIST_ERROR_NO_ERROR;
 }
 
-void ListKillElemByMemoryIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListKillElemByMemoryIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
@@ -379,12 +404,12 @@ void ListKillElemByMemoryIndex(list_t *list, size_t index, const char *callFile,
     LIST_VERIFY(DONT_DO_DUMP);
 
     if(index <= 0 || index >= list->capacity){
-        fprintf(stderr, "Index out of range!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "Index out of range!\n");)
+        return LIST_ERROR_INDEX_OUT_OF_RANGE;
     }
     if(list->prev[index] == -1){
-        fprintf(stderr, "Invalid index!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "Invalid index!\n");)
+        return LIST_ERROR_INVALID_INDEX;
     }
 
     list->value[index] = global_Fiasco;
@@ -399,9 +424,11 @@ void ListKillElemByMemoryIndex(list_t *list, size_t index, const char *callFile,
     list->size--;
 
     LIST_VERIFY(DO_DUMP);
+
+    return LIST_ERROR_NO_ERROR;
 }
 
-void ListKillElemByLogicalIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListKillElemByLogicalIndex(list_t *list, size_t index, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(list != NULL);
     assert(callFile != NULL);
     assert(callFunc != NULL);
@@ -409,8 +436,8 @@ void ListKillElemByLogicalIndex(list_t *list, size_t index, const char *callFile
     LIST_VERIFY(DONT_DO_DUMP);
 
     if(index <= 0 || index >= list->size){
-        fprintf(stderr, "Index out of range!\n");
-        return;
+        CONSOLE_OUTPUT(fprintf(stderr, "Index out of range!\n");)
+        return LIST_ERROR_INDEX_OUT_OF_RANGE;
     }
 
     size_t elem = GetElemByLogicalIndex(list, index);
@@ -427,11 +454,13 @@ void ListKillElemByLogicalIndex(list_t *list, size_t index, const char *callFile
     list->size--;
 
     LIST_VERIFY(DO_DUMP);
+
+    return LIST_ERROR_NO_ERROR;
 }
 
 void ListDestructor(list_t *list){
     if(list == NULL){
-        fprintf(stderr, "List was already destroyed\n");
+        CONSOLE_OUTPUT(fprintf(stderr, "List was already destroyed\n");)
         return;
     }
 
@@ -444,39 +473,43 @@ void ListDestructor(list_t *list){
     free(list->prev);
 }
 
-list_returns_t ListVerify(const list_t *list, dodump_t mode, const char *callFile, const char *callFunc, ssize_t callLine){
+list_errors_t ListVerify(const list_t *list, dodump_t mode, const char *callFile, const char *callFunc, ssize_t callLine){
     assert(callFile != NULL);
     assert(callFunc != NULL);
     if(list == NULL){
-        fprintf(stderr, "list ptr = NULL!\n");
-        return LIST_RETURN_ERROR;
+        CONSOLE_OUTPUT(fprintf(stderr, "list ptr = NULL!\n");)
+        return LIST_ERROR_VERIFICATION_FAILED;
+    }
+
+    if((ssize_t)list->size > (ssize_t)list->capacity){
+        CONSOLE_OUTPUT(fprintf(stderr, "List size is over list capacity!\n");)
+        ListDump(list, callFile, callFunc, callLine);
+        return LIST_ERROR_VERIFICATION_FAILED;
+    }
+    if((ssize_t)list->size < 0){
+        CONSOLE_OUTPUT(fprintf(stderr, "Size is below zero!\n");)
+        ListDump(list, callFile, callFunc, callLine);
+        return LIST_ERROR_VERIFICATION_FAILED;
+    }
+    if((ssize_t)list->capacity <= 0){
+        CONSOLE_OUTPUT(fprintf(stderr, "Capacity is below zero!\n");)
+        return LIST_ERROR_VERIFICATION_FAILED;
+    }
+    for(size_t i = 0; i < list->size; i++){
+        size_t elem1 = GetElemByLogicalIndex(list, i);
+        size_t elem2 = GetElemByLogicalIndex(list, i + 1);
+        if(list->next[elem1] != elem2 || list->prev[elem2] != elem1){
+            CONSOLE_OUTPUT(fprintf(stderr, "Next - prev connection lost\n");)
+            ListDump(list, callFile, callFunc, callLine);
+            return LIST_ERROR_VERIFICATION_FAILED;
+        }
     }
 
     if(mode == DO_DUMP){
         ListDump(list, callFile, callFunc, callLine);
     }
 
-    if(list->size > list->capacity){
-        fprintf(stderr, "List size is over list capacity!\n");
-        return LIST_RETURN_ERROR;
-    }
-    if(list->size < 0){
-        fprintf(stderr, "Size is below zero!\n");
-        return LIST_RETURN_ERROR;
-    }
-    if(list->capacity <= 0){
-        fprintf(stderr, "Capacity is below zero!\n");
-        return LIST_RETURN_ERROR;
-    }
-    for(size_t i = 0; i < list->size; i++){
-        size_t elem1 = GetElemByLogicalIndex(list, i);
-        size_t elem2 = GetElemByLogicalIndex(list, i + 1);
-        if(list->next[elem1] != elem2 || list->prev[elem2] != elem1){
-            fprintf(stderr, "Next - prev connection lost\n");
-            return LIST_RETURN_ERROR;
-        }
-    }
-    return LIST_RETURN_SUCCESS;
+    return LIST_ERROR_NO_ERROR;
 }
 
 
@@ -511,7 +544,7 @@ void GetListPng(const list_t *list, char *png_list_fileName){
 
     FILE *fileDump = fopen(dot_list_fileName, "w");
     if(fileDump == NULL){
-        fprintf(stderr, "Error in dot file opening\n");
+        CONSOLE_OUTPUT(fprintf(stderr, "Error in dot file opening\n");)
         return;
     }
 
@@ -531,6 +564,23 @@ void GetListPng(const list_t *list, char *png_list_fileName){
             continue;
         }
         size_t elem = GetElemByLogicalIndex(list, i);
+        if(!IsIndexValid(list, elem)){
+            CONSOLE_OUTPUT(fprintf(stderr, "Was gotten invalid index!!\n");)
+            // break;
+            for(size_t j = 0; j < i - 1; j++){
+                fprintf(fileDump, "\tnode%llu->node%llu[style = invis, weight = 100];\n", j, list->next[j]);
+            }
+
+            for(size_t j = 0; j < i - 1; j++){
+                fprintf(fileDump, "\tnode%llu:e->node%llu:w[dir = both];\n", j, j + 1);
+            }
+            fprintf(fileDump, "}");
+            fclose(fileDump);
+
+            sprintf(cmd, "dot -Tpng %s -o %s", dot_list_fileName, png_list_fileName);
+            system(cmd);
+            return;
+        }
         color = GetColor(list, elem);
         fprintf(fileDump,
                 "\tnode%llu[shape = Mrecord,"
@@ -539,6 +589,11 @@ void GetListPng(const list_t *list, char *png_list_fileName){
                 "label = \"%d | {index | %llu} | {next | %llu} | {prev | %lld}\"];\n",
                 i, color, list->value[elem], elem, list->next[elem], list->prev[elem]);
     }
+
+    for(size_t i = 0; i < list->size; i++){
+        fprintf(fileDump, "\tnode%llu->node%llu[style = invis, weight = 100];\n", i, list->next[i]);
+    }
+
     for(size_t i = 0; i < list->size + 1; i++){
         if(i == list->size){
             fprintf(fileDump, "\tnode%llu:s->node0:s[dir = both];\n", i);                                  
@@ -546,6 +601,8 @@ void GetListPng(const list_t *list, char *png_list_fileName){
         }
         fprintf(fileDump, "\tnode%llu:e->node%llu:w[dir = both];\n", i, i + 1);
     }
+
+
     fprintf(fileDump, "}");
     fclose(fileDump);
 
@@ -566,9 +623,10 @@ void GetRealListPng(const list_t *list, char *png_real_list_fileName){
     sprintf(dot_real_list_fileName, "dots\\dump__real_list_%d.dot", dumpRealListCounter);
     sprintf(png_real_list_fileName, "pngs\\dump_real_list_%d.png", dumpRealListCounter);
 
+
     FILE *fileDump = fopen(dot_real_list_fileName, "w");
     if(fileDump == NULL){
-        fprintf(stderr, "Error in dot file opening\n");
+        CONSOLE_OUTPUT(fprintf(stderr, "Error in dot file opening\n");)
         return;
     }
 
@@ -577,12 +635,30 @@ void GetRealListPng(const list_t *list, char *png_real_list_fileName){
     fprintf(fileDump, "\tbgcolor = \"%s\"\n", BG_COL);
     for(size_t i = 0; i < list->capacity + 1; i++){
         const char *color = GetColor(list, i);
+        if(color == ERROR_COL){
+            const char *edgeColorNext = NULL;
+            const char *edgeColorPrev = NULL;
+            if(((ssize_t)(list->next[i]) < 0) || ((ssize_t)(list->next[i])) > (ssize_t)(list->capacity)){
+                edgeColorNext = EDGE_RED_COL;
+            }
+            else{
+                edgeColorNext = EDGE_GREEN_COL;
+            }
+            if(((ssize_t)(list->prev[i]) < -1) || ((ssize_t)(list->prev[i]) > (ssize_t)(list->capacity))){
+                edgeColorPrev = ERROR_COL;
+            }
+            else{
+                edgeColorPrev = FILLED_COL;
+            }
+            fprintf(fileDump, "\tnode%llu->node%llu[color = \"%s\"];\n", i, list->prev[i], edgeColorPrev);
+            fprintf(fileDump, "\tnode%llu->node%llu[color = \"%s\"];\n", i, list->next[i], edgeColorNext);
+        }
         if(i == 0){
             fprintf(fileDump, 
                     "\tnode0[shape = Mrecord,"
                     "style = filled,"
                     "fillcolor = \"%s\","
-                    "label = \"dummy | {index | 0} | {next | %llu} | {prev | %lld}\"];\n",
+                    "label = \"dummy | {index | 0} | {next | %lld} | {prev | %lld}\"];\n",
                     color, list->next[0], list->prev[0]);
             continue;
         }
@@ -590,17 +666,30 @@ void GetRealListPng(const list_t *list, char *png_real_list_fileName){
                 "\tnode%llu[shape = Mrecord,"
                 "style = filled,"
                 "fillcolor = \"%s\","
-                "label = \"%d | {index | %llu} | {next | %llu} | {prev | %lld}\"];\n",
+                "label = \"%d | {index | %lld} | {next | %lld} | {prev | %lld}\"];\n",
                 i, color, list->value[i], i, list->next[i], list->prev[i]);
     }
+
+    for(size_t i = 0; i < list->capacity; i++){
+        fprintf(fileDump, "\tnode%llu->node%llu[style = invis, weight = 100];\n", i, i + 1);
+    }
+
     for(size_t i = 0; i < list->capacity + 1; i++){
         const char *edgeColor = GetEdgeColor(list, i);
-        if(i == list->capacity){
-            fprintf(fileDump, "\tnode%llu:s->node0:s[dir = both, color = \"%s\"];\n", i, EDGE_GREEN_COL);                                  
-            break;
+        if(edgeColor == ERROR_COL){
+            
+            fprintf(fileDump, "\tnode%llu->node%llu[color = \"%s\"];\n", i, list->next[i], edgeColor);
+            continue;
         }
-        fprintf(fileDump, "\tnode%llu:e->node%llu:w[dir = both, color = \"%s\"];\n", i, i + 1, edgeColor);
+        if(edgeColor == NULL){
+            continue;
+        }
+        if(list->prev[i] == -1 && list->next[i] == 0){
+            continue;
+        }
+        fprintf(fileDump, "\tnode%llu->node%llu[dir = both, color = \"%s\"];\n", i, list->next[i], edgeColor);
     }
+
     fprintf(fileDump, "}");
     fclose(fileDump);
 
@@ -621,7 +710,7 @@ void ListHtmlFileAppend(const list_t *list, const char *png_list_fileName, const
     if(isInitialized == false){
         FILE *fileDump = fopen(html_fileName, "w");
         if(fileDump == NULL){
-            fprintf(stderr, "Error in html file opening\n");
+            CONSOLE_OUTPUT(fprintf(stderr, "Error in html file opening\n");)
             return;
         }
         ListHtmlCreateHead(fileDump);
@@ -644,7 +733,7 @@ void ListHtmlFileAppend(const list_t *list, const char *png_list_fileName, const
     else{
         FILE *fileDump = fopen(html_fileName, "a");
         if(fileDump == NULL){
-            fprintf(stderr, "Error in html file opening\n");
+            CONSOLE_OUTPUT(fprintf(stderr, "Error in html file opening\n");)
             return;
         }
 
@@ -704,10 +793,22 @@ void ListHtmlCreateTable(const list_t *list, FILE *fileDump){
     fprintf(fileDump, "</table>\n");
 }
 
+bool IsIndexValid(const list_t *list, size_t index){
+    if((((ssize_t)(list->next[index]) < 0) || ((ssize_t)(list->next[index]) > (ssize_t)(list->capacity))) || (((ssize_t)(list->prev[index]) < -1) || ((ssize_t)(list->prev[index]) > (ssize_t)(list->capacity)))){
+        return false;
+    }
+    else{
+        return true;
+    }
+}
+
 const char *GetColor(const list_t *list, size_t index){
     assert(list != NULL);
 
-    if(index == 0){
+    if(!IsIndexValid(list, index)){
+        return ERROR_COL;
+    }
+    else if(index == 0){
         return DUMMY_COL;
     }
     else if(index == list->next[0]){
@@ -751,9 +852,14 @@ const char *GetStatus(const list_t *list, size_t index){
 }
 
 const char *GetEdgeColor(const list_t *list, size_t index){
-    size_t elem1 = GetElemByLogicalIndex(list, index);
-    size_t elem2 = GetElemByLogicalIndex(list, index + 1);
-    if(list->next[elem1] != elem2 || list->prev[elem2] != elem1){
+    if(list->prev[index] == -1){
+        return FIRST_FREE_COL;
+    }
+
+    if(!IsIndexValid(list, index)){
+        return NULL;
+    }
+    if(list->prev[list->next[index]] != index){
         return EDGE_RED_COL;
     }
     else{
